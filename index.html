@@ -8,34 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SteganoCrypt">
+<link rel="manifest" href="manifest.json">
 <title>FagKripImg · SteganoCrypt · OmniNeti</title>
-
-<!-- Manifest PWA embebido dinámicamente -->
-<script>
-  const manifestData = {
-    "name": "FagKripImg SteganoCrypt",
-    "short_name": "SteganoCrypt",
-    "description": "Cifrado y esteganografía LSB local en el navegador",
-    "start_url": "./index.html",
-    "display": "standalone",
-    "background_color": "#0b1120",
-    "theme_color": "#1e293b",
-    "icons": [
-      {
-        "src": "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='%233b82f6'><path d='M256 0c141.4 0 256 114.6 256 256S397.4 512 256 512 0 397.4 0 256 114.6 0 256 0zm0 96c-35.3 0-64 28.7-64 64v32h-16c-17.7 0-32 14.3-32 32v128c0 17.7 14.3 32 32 32h160c17.7 0 32-14.3 32-32V224c0-17.7-14.3-32-32-32h-16v-32c0-35.3-28.7-64-64-64zm32 96h-64v-32c0-17.7 14.3-32 32-32s32 14.3 32 32v32z'/></svg>",
-        "sizes": "512x512",
-        "type": "image/svg+xml",
-        "purpose": "any maskable"
-      }
-    ]
-  };
-  const manifestBlob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
-  const manifestURL = URL.createObjectURL(manifestBlob);
-  const link = document.createElement('link');
-  link.rel = 'manifest';
-  link.href = manifestURL;
-  document.head.appendChild(link);
-</script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -193,77 +167,6 @@ small.help{display:block;opacity:.72;margin-top:.4rem}
 
 <footer><i class="fas fa-code"></i> FagKripImg SteganoCrypt · OmniNeti 2026</footer>
 </div>
-
-<!-- Service Worker en línea para soporte PWA Offline -->
-<script>
-if ('serviceWorker' in navigator) {
-  const swCode = `
-    const CACHE_NAME = 'steganocrypt-v1';
-    const ASSETS = [
-      './',
-      './index.html',
-      'https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js',
-      'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css'
-    ];
-
-    self.addEventListener('install', (e) => {
-      e.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
-      );
-      self.skipWaiting();
-    });
-
-    self.addEventListener('activate', (e) => {
-      e.waitUntil(
-        caches.keys().then((keys) => {
-          return Promise.all(
-            keys.map((key) => {
-              if (key !== CACHE_NAME) return caches.delete(key);
-            })
-          );
-        })
-      );
-      self.clients.claim();
-    });
-
-    self.addEventListener('fetch', (e) => {
-      e.respondWith(
-        caches.match(e.request).then((res) => res || fetch(e.request))
-      );
-    });
-  `;
-
-  const blob = new Blob([swCode], { type: 'application/javascript' });
-  const swUrl = URL.createObjectURL(blob);
-
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register(swUrl)
-      .catch((err) => console.log('PWAServiceWorker Error: ', err));
-  });
-}
-
-// Lógica para botón de instalación PWA
-let deferredPrompt;
-const installBtn = document.getElementById('installPwaBtn');
-
-window.addEventListener('beforeinstallprompt', (e) => {
-  e.preventDefault();
-  deferredPrompt = e;
-  if (installBtn) installBtn.classList.remove('hidden');
-});
-
-if (installBtn) {
-  installBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      installBtn.classList.add('hidden');
-    }
-    deferredPrompt = null;
-  });
-}
-</script>
 
 <script>
 (() => {
@@ -535,4 +438,49 @@ $("decryptExtractedBtn").addEventListener("click",async()=>{
 });
 
 function clearAll(){
-  ["plainText","cipherKey","extractKey"].forEach(
+  ["plainText","cipherKey","extractKey"].forEach(id=>$(id).value="");
+  ["fileInput","coverImage","stegoImage"].forEach(id=>$(id).value="");
+  $("fileName").textContent="";$("coverName").textContent="";
+  $("resultImage").src="";$("stegoPreview").src="";
+  $("imagePreviewContainer").classList.add("hidden");$("hiddenResult").classList.add("hidden");
+  $("extractedContainer").classList.add("hidden");$("extractedCipher").textContent="---";
+  $("decryptedMessage").classList.add("hidden");$("decryptError").classList.add("hidden");
+  setStatus("hideStatus","");setStatus("extractStatus","");
+  cipherSelect.value="vigenere";extractCipherSelect.value="vigenere";updateParams();
+}
+$("clearAllBtn").addEventListener("click",clearAll);
+$("clearAllBtnBottom").addEventListener("click",clearAll);
+})();
+</script>
+
+<!-- Registro de Service Worker e Instalación PWA -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('Service Worker registrado:', reg.scope))
+      .catch(err => console.error('Error Service Worker:', err));
+  });
+}
+
+let deferredPrompt;
+const installBtn = document.getElementById('installPwaBtn');
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBtn) installBtn.classList.remove('hidden');
+});
+
+if (installBtn) {
+  installBtn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') installBtn.classList.add('hidden');
+    deferredPrompt = null;
+  });
+}
+</script>
+</body>
+</html>
